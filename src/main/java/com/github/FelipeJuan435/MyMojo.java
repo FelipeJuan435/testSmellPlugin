@@ -48,14 +48,14 @@ public class MyMojo extends AbstractMojo {
 
             int exitCode = process.waitFor();
             if (exitCode != 0) {
-                throw new MojoExecutionException("TestSmellDetector.jar terminó con un código de error: " + exitCode);
+                throw new MojoExecutionException("TestSmellDetector.jar termino con un codigo de error: " + exitCode);
             }
 
             // Leer el archivo de salida
             Path outputCsvPath = inputCsvFile.toPath().resolveSibling("output.csv");
             File outputCsvFile = outputCsvPath.toFile();
             if (!outputCsvFile.exists()) {
-                throw new MojoExecutionException("No se generó el archivo CSV de salida en la ruta esperada: " + outputCsvPath);
+                throw new MojoExecutionException("No se genero el archivo CSV de salida en la ruta esperada: " + outputCsvPath);
             }
 
             // Imprimir contenido del CSV de salida
