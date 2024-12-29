@@ -7,10 +7,13 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Mojo(name = "detect-smells", defaultPhase = LifecyclePhase.TEST)
 public class MyMojo extends AbstractMojo {
@@ -18,8 +21,11 @@ public class MyMojo extends AbstractMojo {
     @Parameter(property = "testSmellDetector.jarPath", required = true)
     private String jarPath;
 
-    @Parameter(property = "testSmellDetector.inputCsvPath", defaultValue = "${project.build.directory}/inputfile.csv")
+    @Parameter(property = "testSmellDetector.inputCsvPath", required = true)
     private String inputCsvPath;
+    
+    @Parameter(property = "testSmellDetector.testPath", required = true)
+    private String testPath;
     
     public void execute() throws MojoExecutionException {
     	// Validar que los archivos existen
@@ -29,10 +35,17 @@ public class MyMojo extends AbstractMojo {
         if (!jarFile.exists()) {
             throw new MojoExecutionException("El archivo TestSmellDetector.jar no se encuentra en la ruta especificada: " + jarPath);
         }
-        if (!inputCsvFile.exists()) {
-            throw new MojoExecutionException("El archivo CSV de entrada no se encuentra en la ruta especificada: " + inputCsvPath);
-        }
 
+        Path csvPath = Paths.get(inputCsvPath);
+        try (BufferedWriter writer = Files.newBufferedWriter(csvPath)) {
+        	// Crear archivo csv input
+            Files.createDirectories(csvPath.getParent());
+            writer.write(String.format("myApp,%s,%s%n", testPath, ""));
+        } catch (Exception e) {
+            throw new MojoExecutionException("Error creando inputCSV file", e);
+        }
+        getLog().info("Archivo CSV creado en: " + csvPath);
+        
         // Ejecutar TestSmellDetector.jar
         try {
             ProcessBuilder processBuilder = new ProcessBuilder("java", "-jar", jarPath, inputCsvPath);
