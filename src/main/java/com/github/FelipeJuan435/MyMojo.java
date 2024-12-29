@@ -19,74 +19,81 @@ import java.nio.file.Paths;
 @Mojo(name = "detect-smells", defaultPhase = LifecyclePhase.TEST)
 public class MyMojo extends AbstractMojo {
 
-    @Parameter(property = "testSmellDetector.jarPath", required = true)
-    private String jarPath;
+	@Parameter(property = "testSmellDetector.jarPath", required = true)
+	private String jarPath;
 
-    @Parameter(property = "testSmellDetector.inputCsvPath", required = true)
-    private String inputCsvPath;
-    
-    @Parameter(property = "testSmellDetector.testPath", required = true)
-    private String testPath;
-    
-    public void execute() throws MojoExecutionException {
-    	// Validar que los archivos existen
-        File jarFile = new File(jarPath);
-        File inputCsvFile = new File(inputCsvPath);
+	@Parameter(property = "testSmellDetector.inputCsvPath", required = true)
+	private String inputCsvPath;
 
-        if (!jarFile.exists()) {
-            throw new MojoExecutionException("El archivo TestSmellDetector.jar no se encuentra en la ruta especificada: " + jarPath);
-        }
+	@Parameter(property = "testSmellDetector.testPath", required = true)
+	private String testPath;
 
-        Path csvPath = Paths.get(inputCsvPath);
-        try (BufferedWriter writer = Files.newBufferedWriter(csvPath)) {
-        	// Crear archivo csv input
-            Files.createDirectories(csvPath.getParent());
-            writer.write(String.format("myApp,%s,", testPath));
-        } catch (Exception e) {
-            throw new MojoExecutionException("Error creando inputCSV file", e);
-        }
-        getLog().info("Archivo CSV creado en: " + csvPath);
-        
-        // Ejecutar TestSmellDetector.jar
-        try {
-            ProcessBuilder processBuilder = new ProcessBuilder("java", "-jar", jarPath, inputCsvPath);
-            processBuilder.redirectErrorStream(true);
-            Process process = processBuilder.start();
+	public void execute() throws MojoExecutionException {
+		// Validar que los archivos existen
+		File jarFile = new File(jarPath);
+		File inputCsvFile = new File(inputCsvPath);
 
-            // Leer y mostrar la salida del comando
-            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                getLog().info(line);
-            }
+		if (!jarFile.exists()) {
+			throw new MojoExecutionException("El archivo TestSmellDetector.jar no se encuentra en la ruta especificada: " + jarPath);
+		}
 
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                throw new MojoExecutionException("TestSmellDetector.jar termino con un codigo de error: " + exitCode);
-            }
+		Path csvPath = Paths.get(inputCsvPath);
+		try (BufferedWriter writer = Files.newBufferedWriter(csvPath)) {
+			// Crear archivo csv input
+			Files.createDirectories(csvPath.getParent());
+			writer.write(String.format("myApp,%s,", testPath));
+		} catch (Exception e) {
+			throw new MojoExecutionException("Error creando inputCSV file", e);
+		}
+		getLog().info("Archivo CSV creado en: " + csvPath);
 
-            
-            Path baseDirPath = Paths.get("${project.basedir}");
-            // Buscar el archivo que coincide con el patrón "Output*"
-            File outputCsvFile = null;
-            DirectoryStream<Path> stream = Files.newDirectoryStream(baseDirPath, "Output*");
-            for (Path path : stream) {
-            	if (Files.isRegularFile(path)) { // Verifica que sea un archivo regular
-            		outputCsvFile = path.toFile();
-            		break; // Toma solo el primer archivo encontrado
-            	}
-            }
+		// Ejecutar TestSmellDetector.jar
+		try {
+			ProcessBuilder processBuilder = new ProcessBuilder("java", "-jar", jarPath, inputCsvPath);
+			processBuilder.redirectErrorStream(true);
+			Process process = processBuilder.start();
 
-            // Imprimir contenido del CSV de salida
-            BufferedReader outputReader = new BufferedReader(new FileReader(outputCsvFile));
-            		String outputLine;
-            getLog().info("Contenido del archivo de salida:");
-            while ((outputLine = outputReader.readLine()) != null) {
-            	getLog().info(outputLine);
-            }
+			// Leer y mostrar la salida del comando
+			BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+			String line;
+			while ((line = reader.readLine()) != null) {
+				getLog().info(line);
+			}
 
-        } catch (Exception e) {
-            throw new MojoExecutionException("Error ejecutando TestSmellDetector.jar", e);
-        }
-    }
+			int exitCode = process.waitFor();
+			if (exitCode != 0) {
+				throw new MojoExecutionException("TestSmellDetector.jar termino con un codigo de error: " + exitCode);
+			}
+
+
+			// Resolver el patrón `${project.basedir}/Output*`
+			String projectBaseDir = System.getProperty("user.dir"); // Obtiene la ruta base del proyecto
+			Path baseDirPath = Paths.get(projectBaseDir);
+
+			// Buscar el archivo que coincide con el patrón "Output*"
+			File outputCsvFile = null;
+			DirectoryStream<Path> stream = Files.newDirectoryStream(baseDirPath, "Output*");
+			for (Path path : stream) {
+				outputCsvFile = path.toFile();
+				break; // Toma solo el primer archivo encontrado
+			}
+
+
+			if (outputCsvFile == null) {
+				throw new MojoExecutionException("No se encontró ningún archivo que coincida con el patrón: Output* en " + baseDirPath);
+			}
+
+			// Leer el contenido del archivo encontrado
+			BufferedReader outputReader = new BufferedReader(new FileReader(outputCsvFile));
+			String outputLine;
+			getLog().info("Contenido del archivo de salida:");
+			while ((outputLine = outputReader.readLine()) != null) {
+				getLog().info(outputLine);
+			}
+
+
+		} catch (Exception e) {
+			throw new MojoExecutionException("Error ejecutando TestSmellDetector.jar", e);
+		}
+	}
 }
